@@ -42,8 +42,10 @@
             android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
             android:theme="@style/Theme.Assistant.Capture" />
 
-        <!-- Raccourci « Noter » : choisissable pour le double appui sur la touche latérale Samsung
-             (ou à poser sur l'écran d'accueil). Ouvre directement l'écran de saisie. -->
+        <!-- Porte d'entrée « par défaut » de l'appli (catégorie INFO, sans icône en plus) :
+             c'est elle qu'Android ouvre quand un réglage lance « Assistant » sans préciser d'écran,
+             comme le double appui sur la touche latérale Samsung. Ouvre directement la saisie.
+             L'icône Assistant, elle, ouvre toujours l'historique. -->
         <activity-alias
             android:name=".Noter"
             android:exported="true"
@@ -53,7 +55,7 @@
             android:targetActivity=".ui.quickcapture.QuickCaptureActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.INFO" />
             </intent-filter>
         </activity-alias>
 

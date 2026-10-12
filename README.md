@@ -19,7 +19,8 @@ Le cahier des charges complet (V2) est tenu à part ; les règles de développem
 ## Noter sans passer par le widget
 
 - **Touche latérale** : Paramètres → Fonctions avancées → Touche latérale → Appuyer deux fois →
-  Ouvrir l'application → **Noter**.
+  Ouvrir l'application → **Assistant**. Lancée ainsi, l'appli ouvre directement l'écran de saisie
+  (porte d'entrée par défaut, catégorie INFO) ; l'icône Assistant ouvre l'historique.
 - **Tuile des réglages rapides** : dérouler les réglages rapides → crayon (modifier) → faire glisser
   la tuile **Noter** dans la liste.
 - **Écran verrouillé** : l'écran de saisie s'affiche par-dessus l'écran verrouillé quand c'est
