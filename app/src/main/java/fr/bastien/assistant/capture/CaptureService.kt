@@ -6,6 +6,7 @@ import fr.bastien.assistant.data.local.AssistantDatabase
 import fr.bastien.assistant.data.local.CaptureEntity
 import fr.bastien.assistant.data.local.TaskEntity
 import fr.bastien.assistant.domain.model.CaptureStatus
+import fr.bastien.assistant.domain.model.SyncStatus
 import fr.bastien.assistant.domain.model.TaskType
 import java.util.UUID
 
@@ -29,6 +30,8 @@ class CaptureService(
     private val db: AssistantDatabase,
     private val clock: () -> Long = System::currentTimeMillis,
     private val newId: () -> String = { UUID.randomUUID().toString() },
+    /** Appelé après chaque nouvelle capture enregistrée (ex. : demander un envoi vers To Do). */
+    private val onSaved: (CaptureSource) -> Unit = {},
 ) {
     private val dao = db.dao()
 
@@ -41,7 +44,7 @@ class CaptureService(
      */
     suspend fun capture(requestId: String, rawText: String, source: CaptureSource): CaptureResult {
         if (rawText.isBlank()) return CaptureResult.Empty
-        return db.withTransaction {
+        val result = db.withTransaction {
             val existing = dao.getCapture(requestId)
             when {
                 existing == null -> {
@@ -56,6 +59,9 @@ class CaptureService(
                 }
             }
         }
+        // Enregistrement fait d'abord ; la suite (envoi) ne peut plus faire perdre la capture.
+        if (result is CaptureResult.Saved) runCatching { onSaved(source) }
+        return result
     }
 
     suspend fun exists(captureId: String): Boolean = dao.captureExists(captureId)
@@ -82,6 +88,8 @@ class CaptureService(
                 title = titleFrom(rawText),
                 createdAt = now,
                 updatedAt = now,
+                // « À envoyer dès que possible » : partira vers To Do une fois connecté.
+                syncStatus = SyncStatus.WAITING,
             ),
         )
         dao.insertLog(

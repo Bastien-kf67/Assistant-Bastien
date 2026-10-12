@@ -2,7 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Jalon 1 : aucune permission. Aucune donnée ne quitte le téléphone, pas de sauvegarde cloud. -->
+    <!-- Réseau : uniquement pour la synchro avec Microsoft To Do, après enregistrement local.
+         Pas de sauvegarde cloud Android. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <application
         android:name=".AssistantApp"
         android:allowBackup="false"
@@ -47,6 +51,18 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/assistant_widget_info" />
         </receiver>
+
+        <!-- WorkManager démarre au premier envoi, pas à l'ouverture : l'écran de saisie reste immédiat. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
     </application>
 
     <!-- Permet de lancer la reconnaissance vocale du téléphone (Android 11 et plus). -->

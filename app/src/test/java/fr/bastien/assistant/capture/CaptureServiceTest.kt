@@ -71,7 +71,35 @@ class CaptureServiceTest {
         assertEquals(TaskType.TASK, task.type)
         assertNull(task.dueDate)
         assertFalse(task.done)
-        assertEquals(SyncStatus.LOCAL_ONLY, task.syncStatus)
+        assertEquals(SyncStatus.WAITING, task.syncStatus)
+        assertNull(task.externalId)
+    }
+
+    @Test
+    fun onSavedIsCalledOncePerNewCaptureOnly() = runBlocking {
+        val sources = mutableListOf<CaptureSource>()
+        val notifying = CaptureService(db, clock = { now }, onSaved = { sources += it })
+
+        notifying.capture("req-1", "Rappeler Weber", CaptureSource.ANDROID_TEXT)
+        notifying.capture("req-1", "Rappeler Weber", CaptureSource.ANDROID_TEXT)
+        notifying.capture("req-2", "   ", CaptureSource.ANDROID_TEXT)
+
+        assertEquals(listOf(CaptureSource.ANDROID_TEXT), sources)
+    }
+
+    @Test
+    fun checkingASyncedTaskPutsItBackInTheQueueAndNotifies() = runBlocking {
+        var changes = 0
+        val notifyingTasks = TaskService(db, clock = { now }, onChanged = { changes++ })
+        service.capture("req-1", "Rappeler Weber", CaptureSource.ANDROID_TEXT)
+        val task = db.dao().tasksForCapture("req-1").single()
+        db.dao().setSyncStatus(task.id, SyncStatus.SYNCED)
+
+        notifyingTasks.setDone(task.id, true)
+        notifyingTasks.setDone(task.id, true)
+
+        assertEquals(SyncStatus.WAITING, db.dao().getTask(task.id)!!.syncStatus)
+        assertEquals(1, changes)
     }
 
     @Test

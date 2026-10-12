@@ -20,7 +20,10 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = buildNumber
-        versionName = "0.1.$buildNumber"
+        versionName = "0.2.$buildNumber"
+
+        // Retour de la connexion Microsoft : fr.bastien.assistant://auth (voir TodoConfig.REDIRECT_URI).
+        manifestPlaceholders["appAuthRedirectScheme"] = "fr.bastien.assistant"
     }
 
     signingConfigs {
@@ -88,6 +91,10 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.appauth)
+    implementation(libs.okhttp)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

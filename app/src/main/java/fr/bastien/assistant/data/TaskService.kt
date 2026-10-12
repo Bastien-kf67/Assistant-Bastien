@@ -8,14 +8,16 @@ import fr.bastien.assistant.data.local.AssistantDatabase
 class TaskService(
     private val db: AssistantDatabase,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** Appelé après une modification locale (ex. : demander un envoi vers To Do). */
+    private val onChanged: () -> Unit = {},
 ) {
     private val dao = db.dao()
 
     suspend fun setDone(taskId: String, done: Boolean) {
         val now = clock()
-        db.withTransaction {
-            val task = dao.getTask(taskId) ?: return@withTransaction
-            if (task.done == done) return@withTransaction
+        val changed = db.withTransaction {
+            val task = dao.getTask(taskId) ?: return@withTransaction false
+            if (task.done == done) return@withTransaction false
             dao.setDone(taskId, done, if (done) now else null, now)
             dao.insertLog(
                 ActionLogEntity(
@@ -25,6 +27,8 @@ class TaskService(
                     detail = null,
                 ),
             )
+            true
         }
+        if (changed) runCatching { onChanged() }
     }
 }
