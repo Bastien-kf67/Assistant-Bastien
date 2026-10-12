@@ -37,13 +37,33 @@ class HistoryViewModel(private val app: AssistantApp) : ViewModel() {
     val errorCount: StateFlow<Int> = dao.observeCount(SyncStatus.ERROR)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
+    /** Corbeille : ce qui a été supprimé ces 30 derniers jours. */
+    val trash: StateFlow<List<TaskEntity>> = dao.observeTrash(System.currentTimeMillis() - TRASH_DAYS * DAY_MS)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     var connecting by mutableStateOf(false)
         private set
     var connectMessage by mutableStateOf<String?>(null)
         private set
 
+    /** Historique déverrouillé (empreinte) : gardé ici pour ne pas redemander en pliant/dépliant. */
+    var unlocked by mutableStateOf(false)
+    var stoppedAt: Long = 0L
+
     fun setDone(task: TaskEntity, done: Boolean) {
         app.appScope.launch { app.taskService.setDone(task.id, done) }
+    }
+
+    fun rename(task: TaskEntity, title: String) {
+        app.appScope.launch { app.taskService.rename(task.id, title) }
+    }
+
+    fun moveToTrash(task: TaskEntity) {
+        app.appScope.launch { app.taskService.moveToTrash(task.id) }
+    }
+
+    fun restore(task: TaskEntity) {
+        app.appScope.launch { app.taskService.restore(task.id) }
     }
 
     fun authorizationIntent(): Intent {
@@ -96,6 +116,9 @@ class HistoryViewModel(private val app: AssistantApp) : ViewModel() {
     }
 
     companion object {
+        const val TRASH_DAYS = 30L
+        private const val DAY_MS = 24L * 60 * 60 * 1000
+
         val Factory = viewModelFactory {
             initializer { HistoryViewModel(this[APPLICATION_KEY] as AssistantApp) }
         }

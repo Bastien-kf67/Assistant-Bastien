@@ -33,8 +33,13 @@ Ordre des priorités : aucune capture perdue, rapidité, simplicité, fiabilité
 - Les écritures sont lancées dans `AssistantApp.appScope` : elles vont au bout même si l'écran se ferme.
 - Aucun secret dans Git (clés, mots de passe, jetons). La clé de signature passe par les secrets GitHub.
 - Ne jamais écrire de jeton, clé, mot de passe ou cookie dans le journal (`action_log`) ni dans les logs.
-- Permissions Android minimales. Le Jalon 1 n'en demande aucune.
+- Permissions Android minimales : réseau uniquement, pour To Do.
 - Données : `userId` présent partout, identifiants UUID générés sur le téléphone.
+- Synchro To Do (`integration/microsoft/TodoSyncEngine`) : d'abord ce qui vient de To Do, puis
+  ce qui part. Une modification locale en attente (`syncStatus = WAITING`) l'emporte toujours.
+  Rien n'est effacé de la base : les suppressions vont dans la corbeille (`deletedAt`).
+- Jetons Microsoft chiffrés par le Keystore Android (`SecureStore`), jamais en clair ni dans un log.
+- L'écran de saisie peut s'afficher sur l'écran verrouillé : il ne doit jamais montrer les captures existantes.
 
 ## Compilation
 
@@ -48,5 +53,7 @@ corriger. Un jalon n'est terminé que quand l'exécution est verte et l'APK publ
 - `data/` : base Room (`local/`), brouillon, opérations sur les tâches.
 - `domain/model/` : statuts, types, catégories.
 - `ui/quickcapture/` : écran de saisie ouvert par le widget.
-- `ui/main/` : historique.
-- `widget/` : widget Glance.
+- `ui/main/` : historique, recherche, corbeille, verrouillage.
+- `widget/` : widget Glance et tuile « Noter » des réglages rapides.
+- `integration/microsoft/` : connexion Microsoft, Microsoft Graph, moteur de synchro To Do.
+- `worker/` : déclenchement de la synchro en arrière-plan.

@@ -85,6 +85,10 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.core)
+    implementation(libs.androidx.biometric)
+    // Version récente imposée : celle tirée par biometric est trop ancienne pour les résultats d'activité.
+    implementation(libs.androidx.fragment.ktx)
 
     implementation(libs.androidx.glance.appwidget)
 

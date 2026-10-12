@@ -41,12 +41,23 @@ class FakeTodoApi : TodoApi {
         return addRemote(title, completed)
     }
 
-    override suspend fun updateStatus(listId: String, taskId: String, completed: Boolean) {
+    override suspend fun updateTask(listId: String, taskId: String, title: String, completed: Boolean) {
         failNextUpdate?.let { failNextUpdate = null; throw it }
         val task = tasks[taskId] ?: throw TodoApiException(404, "task not found")
         updateCalls++
-        tasks[taskId] = task.copy(completed = completed)
+        tasks[taskId] = task.copy(title = title, completed = completed)
         changes += remote(tasks.getValue(taskId))
+    }
+
+    var deleteCalls = 0
+        private set
+
+    override suspend fun deleteTask(listId: String, taskId: String) {
+        deleteCalls++
+        // Comme Graph côté appli : une tâche déjà absente n'est pas une erreur.
+        if (tasks.remove(taskId) != null) {
+            changes += RemoteTask(taskId, "", completed = false, modifiedAt = null, removed = true)
+        }
     }
 
     override suspend fun delta(listId: String, deltaLink: String?): DeltaResult {

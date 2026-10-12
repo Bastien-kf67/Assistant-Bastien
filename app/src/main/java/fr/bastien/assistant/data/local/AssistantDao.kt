@@ -50,10 +50,63 @@ interface AssistantDao {
     @Query("SELECT * FROM action_log WHERE captureId = :captureId ORDER BY timestamp ASC, id ASC")
     suspend fun logForCapture(captureId: String): List<ActionLogEntity>
 
+    /** Renommer : le titre de la tâche change, le texte d'origine de la capture jamais. */
+    @Query(
+        """
+        UPDATE tasks SET title = :title, updatedAt = :now,
+            syncStatus = CASE WHEN syncStatus = 'LOCAL_ONLY' THEN 'LOCAL_ONLY' ELSE 'WAITING' END
+        WHERE id = :taskId AND deletedAt IS NULL
+        """,
+    )
+    suspend fun rename(taskId: String, title: String, now: Long): Int
+
+    /** Mise à la corbeille. Une tâche déjà envoyée attend que sa suppression parte vers To Do. */
+    @Query(
+        """
+        UPDATE tasks SET deletedAt = :now, updatedAt = :now,
+            syncStatus = CASE WHEN externalId IS NOT NULL AND syncStatus != 'LOCAL_ONLY' THEN 'WAITING' ELSE syncStatus END
+        WHERE id = :taskId AND deletedAt IS NULL
+        """,
+    )
+    suspend fun moveToTrash(taskId: String, now: Long): Int
+
+    /** Sortie de corbeille : la tâche repart vers To Do (recréée si elle y avait été supprimée). */
+    @Query(
+        """
+        UPDATE tasks SET deletedAt = NULL, updatedAt = :now,
+            syncStatus = CASE WHEN syncStatus = 'LOCAL_ONLY' THEN 'LOCAL_ONLY' ELSE 'WAITING' END
+        WHERE id = :taskId AND deletedAt IS NOT NULL
+        """,
+    )
+    suspend fun restore(taskId: String, now: Long): Int
+
+    /** Corbeille : tâches supprimées depuis [since], les plus récentes en haut. */
+    @Query("SELECT * FROM tasks WHERE deletedAt IS NOT NULL AND deletedAt >= :since ORDER BY deletedAt DESC")
+    fun observeTrash(since: Long): Flow<List<TaskEntity>>
+
     // --- Synchronisation avec un outil externe (Microsoft To Do) ---
 
-    @Query("SELECT * FROM tasks WHERE syncStatus = 'WAITING' AND deletedAt IS NULL AND type = 'TASK' ORDER BY createdAt ASC")
+    /** À envoyer : nouvelles tâches, modifications, et suppressions de tâches déjà envoyées. */
+    @Query(
+        """
+        SELECT * FROM tasks WHERE syncStatus = 'WAITING' AND type = 'TASK'
+            AND (deletedAt IS NULL OR externalId IS NOT NULL)
+        ORDER BY createdAt ASC
+        """,
+    )
     suspend fun tasksToPush(): List<TaskEntity>
+
+    @Query("UPDATE tasks SET externalId = NULL, externalProvider = NULL WHERE id = :taskId")
+    suspend fun clearExternal(taskId: String)
+
+    /** Suppression bien partie vers To Do (sauf si la tâche a été restaurée entre-temps). */
+    @Query(
+        """
+        UPDATE tasks SET externalId = NULL, externalProvider = NULL, syncStatus = 'SYNCED'
+        WHERE id = :taskId AND updatedAt = :expectedUpdatedAt
+        """,
+    )
+    suspend fun markRemoteDeleted(taskId: String, expectedUpdatedAt: Long): Int
 
     @Query("SELECT * FROM tasks WHERE externalId = :externalId LIMIT 1")
     suspend fun findByExternalId(externalId: String): TaskEntity?
@@ -87,8 +140,14 @@ interface AssistantDao {
     )
     suspend fun applyRemote(taskId: String, title: String, done: Boolean, doneAt: Long?, now: Long): Int
 
-    /** Tâche supprimée dans To Do : elle sort de l'historique sans être effacée de la base. */
-    @Query("UPDATE tasks SET deletedAt = :now, updatedAt = :now, syncStatus = 'SYNCED' WHERE id = :taskId AND deletedAt IS NULL")
+    /** Tâche supprimée dans To Do : elle part dans la corbeille d'Assistant, rien n'est effacé de la base. */
+    @Query(
+        """
+        UPDATE tasks SET deletedAt = :now, updatedAt = :now, syncStatus = 'SYNCED',
+            externalId = NULL, externalProvider = NULL
+        WHERE id = :taskId AND deletedAt IS NULL
+        """,
+    )
     suspend fun softDeleteFromRemote(taskId: String, now: Long): Int
 
     /** À la connexion : les tâches restées locales (Jalon 1) partent aussi vers To Do. */

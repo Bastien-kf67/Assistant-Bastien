@@ -8,7 +8,11 @@ interface TodoApi {
     /** Crée une tâche et renvoie son identifiant To Do. */
     suspend fun createTask(listId: String, title: String, completed: Boolean): String
 
-    suspend fun updateStatus(listId: String, taskId: String, completed: Boolean)
+    /** Met à jour titre et état « fait ». */
+    suspend fun updateTask(listId: String, taskId: String, title: String, completed: Boolean)
+
+    /** Supprime une tâche ; déjà absente = pas une erreur. */
+    suspend fun deleteTask(listId: String, taskId: String)
 
     /** Changements depuis [deltaLink] (tout le contenu de la liste si null). */
     suspend fun delta(listId: String, deltaLink: String?): DeltaResult

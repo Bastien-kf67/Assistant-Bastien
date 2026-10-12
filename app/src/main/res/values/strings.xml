@@ -3,4 +3,5 @@
     <string name="app_name">Assistant</string>
     <string name="widget_name">Assistant</string>
     <string name="widget_description">Écrire ou dicter une chose à ne pas oublier</string>
+    <string name="note_name">Noter</string>
 </resources>

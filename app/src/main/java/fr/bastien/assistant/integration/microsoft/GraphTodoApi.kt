@@ -47,8 +47,17 @@ class GraphTodoApi(
         return call("POST", url("me", "todo", "lists", listId, "tasks").toString(), body).getString("id")
     }
 
-    override suspend fun updateStatus(listId: String, taskId: String, completed: Boolean) {
-        call("PATCH", url("me", "todo", "lists", listId, "tasks", taskId).toString(), JSONObject().put("status", status(completed)))
+    override suspend fun updateTask(listId: String, taskId: String, title: String, completed: Boolean) {
+        val body = JSONObject().put("title", title).put("status", status(completed))
+        call("PATCH", url("me", "todo", "lists", listId, "tasks", taskId).toString(), body)
+    }
+
+    override suspend fun deleteTask(listId: String, taskId: String) {
+        try {
+            call("DELETE", url("me", "todo", "lists", listId, "tasks", taskId).toString())
+        } catch (e: TodoApiException) {
+            if (e.status != 404) throw e
+        }
     }
 
     override suspend fun delta(listId: String, deltaLink: String?): DeltaResult {

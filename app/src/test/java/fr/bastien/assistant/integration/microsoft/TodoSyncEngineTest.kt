@@ -157,7 +157,87 @@ class TodoSyncEngineTest {
 
         val deleted = reload(task)
         assertNotNull(deleted.deletedAt)
+        assertNull(deleted.externalId)
         assertNotNull(db.dao().getCapture(task.captureId))
+    }
+
+    @Test
+    fun renamedInAssistantIsRenamedInTodo() = runBlocking {
+        val task = capture("Apeler Weber")
+        engine.sync()
+
+        tasks.rename(task.id, "Appeler Weber")
+        engine.sync()
+
+        val synced = reload(task)
+        assertEquals("Appeler Weber", api.tasks.getValue(synced.externalId!!).title)
+        assertEquals(SyncStatus.SYNCED, synced.syncStatus)
+        assertEquals("Apeler Weber", db.dao().getCapture(task.captureId)!!.originalText)
+    }
+
+    @Test
+    fun trashedInAssistantIsDeletedInTodo() = runBlocking {
+        val task = capture("Tâche en trop")
+        engine.sync()
+        val externalId = reload(task).externalId!!
+
+        tasks.moveToTrash(task.id)
+        engine.sync()
+        engine.sync()
+
+        assertFalse(externalId in api.tasks)
+        val trashed = reload(task)
+        assertNotNull(trashed.deletedAt)
+        assertNull(trashed.externalId)
+        assertEquals(SyncStatus.SYNCED, trashed.syncStatus)
+    }
+
+    @Test
+    fun restoredAfterDeletionIsSentAgain() = runBlocking {
+        val task = capture("Rappeler Weber")
+        engine.sync()
+        tasks.moveToTrash(task.id)
+        engine.sync()
+
+        tasks.restore(task.id)
+        engine.sync()
+
+        val restored = reload(task)
+        assertNull(restored.deletedAt)
+        assertEquals(SyncStatus.SYNCED, restored.syncStatus)
+        assertEquals(listOf("Rappeler Weber"), api.tasks.values.map { it.title })
+        assertEquals(2, api.createCalls)
+    }
+
+    @Test
+    fun restoredBeforeDeletionLeftCreatesNoDuplicate() = runBlocking {
+        val task = capture("Rappeler Weber")
+        engine.sync()
+
+        tasks.moveToTrash(task.id)
+        tasks.restore(task.id)
+        engine.sync()
+
+        assertEquals(0, api.deleteCalls)
+        assertEquals(1, api.createCalls)
+        assertEquals(1, api.tasks.size)
+        assertEquals(SyncStatus.SYNCED, reload(task).syncStatus)
+    }
+
+    @Test
+    fun taskVanishedFromTodoIsRecreatedWhenChangedHere() = runBlocking {
+        val task = capture("Commander les filtres")
+        engine.sync()
+        // Disparue de To Do sans que le changement soit encore arrivé ici.
+        api.tasks.remove(reload(task).externalId!!)
+
+        tasks.setDone(task.id, true)
+        engine.sync()
+
+        val synced = reload(task)
+        assertEquals(SyncStatus.SYNCED, synced.syncStatus)
+        assertTrue(api.tasks.getValue(synced.externalId!!).completed)
+        assertEquals(2, api.createCalls)
     }
 
     @Test

@@ -141,15 +141,21 @@ class TodoSyncEngine(
     private suspend fun push(listId: String, report: SyncReport) {
         for (task in dao.tasksToPush()) {
             try {
-                if (task.externalId == null) send(listId, task, report) else update(listId, task, report)
+                when {
+                    task.deletedAt != null -> remove(listId, task, report)
+                    task.externalId == null -> send(listId, task, report)
+                    else -> update(listId, task, report)
+                }
             } catch (e: TodoApiException) {
                 when {
                     e.isTransient || e.isAuth -> throw e
                     e.status == 404 && task.externalId == null -> throw ListGoneException()
                     e.status == 404 -> {
-                        // Tâche supprimée dans To Do entre-temps.
-                        dao.softDeleteFromRemote(task.id, clock())
-                        log(task.captureId, "TODO_REMOTE_DELETED", "introuvable à l'envoi")
+                        // Tâche disparue de To Do alors qu'elle vit encore ici : on la recrée,
+                        // pour ne rien perdre de ce que l'utilisateur a voulu.
+                        dao.clearExternal(task.id)
+                        log(task.captureId, "TODO_RECREATE", "introuvable dans To Do, renvoi")
+                        send(listId, task.copy(externalId = null), report)
                     }
                     else -> {
                         dao.setSyncStatusIfUnchanged(task.id, SyncStatus.ERROR, task.updatedAt)
@@ -172,10 +178,19 @@ class TodoSyncEngine(
     }
 
     private suspend fun update(listId: String, task: TaskEntity, report: SyncReport) {
-        api.updateStatus(listId, requireNotNull(task.externalId), task.done)
+        api.updateTask(listId, requireNotNull(task.externalId), task.title, task.done)
         db.withTransaction {
             dao.setSyncStatusIfUnchanged(task.id, SyncStatus.SYNCED, task.updatedAt)
-            log(task.captureId, "TODO_UPDATED", "fait=${task.done}")
+            log(task.captureId, "TODO_UPDATED", "fait=${task.done} titre=\"${task.title}\"")
+        }
+        report.updated++
+    }
+
+    private suspend fun remove(listId: String, task: TaskEntity, report: SyncReport) {
+        api.deleteTask(listId, requireNotNull(task.externalId))
+        db.withTransaction {
+            dao.markRemoteDeleted(task.id, task.updatedAt)
+            log(task.captureId, "TODO_DELETED", "mise à la corbeille dans Assistant")
         }
         report.updated++
     }

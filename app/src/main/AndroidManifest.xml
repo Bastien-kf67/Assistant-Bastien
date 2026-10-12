@@ -30,15 +30,44 @@
         </activity>
 
         <!-- Écran de saisie ouvert par le widget : tâche à part, absent des applis récentes,
-             pas recréé quand on plie ou déplie le téléphone. -->
+             pas recréé quand on plie ou déplie le téléphone. Il peut s'afficher par-dessus
+             l'écran verrouillé : il ne montre jamais les captures existantes. -->
         <activity
             android:name=".ui.quickcapture.QuickCaptureActivity"
             android:exported="false"
             android:excludeFromRecents="true"
+            android:showWhenLocked="true"
             android:taskAffinity="fr.bastien.assistant.capture"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|density|uiMode"
             android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
             android:theme="@style/Theme.Assistant.Capture" />
+
+        <!-- Raccourci « Noter » : choisissable pour le double appui sur la touche latérale Samsung
+             (ou à poser sur l'écran d'accueil). Ouvre directement l'écran de saisie. -->
+        <activity-alias
+            android:name=".Noter"
+            android:exported="true"
+            android:icon="@mipmap/ic_note_launcher"
+            android:label="@string/note_name"
+            android:roundIcon="@mipmap/ic_note_launcher"
+            android:targetActivity=".ui.quickcapture.QuickCaptureActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Tuile « Noter » des réglages rapides. -->
+        <service
+            android:name=".widget.CaptureTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_note"
+            android:label="@string/note_name"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
 
         <receiver
             android:name=".widget.AssistantWidgetReceiver"
