@@ -1,0 +1,79 @@
+name: Compilation
+
+# À chaque envoi sur dev ou main : tests, APK signé, publication sur la page « Releases » du dépôt.
+on:
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      - name: Préparer la clé de signature
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ASSISTANT_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/assistant.jks"
+            echo "ASSISTANT_KEYSTORE_PATH=$RUNNER_TEMP/assistant.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Pas de clé de signature : APK signé avec une clé de test, les mises à jour demanderont une désinstallation."
+          fi
+
+      - name: Tests et compilation
+        env:
+          ASSISTANT_KEYSTORE_PASSWORD: ${{ secrets.ASSISTANT_KEYSTORE_PASSWORD }}
+          ASSISTANT_KEY_ALIAS: ${{ secrets.ASSISTANT_KEY_ALIAS }}
+          ASSISTANT_KEY_PASSWORD: ${{ secrets.ASSISTANT_KEY_PASSWORD }}
+        run: gradle --no-daemon testReleaseUnitTest assembleRelease -PversionCode=${{ github.run_number }}
+
+      - name: Rapport de tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-tests
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
+
+      - name: Schéma de la base
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-base
+          path: app/schemas/
+          if-no-files-found: ignore
+
+      - name: Publier l'APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.ref_name }}
+          RUN: ${{ github.run_number }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ "$BRANCH" = "main" ]; then TAG="stable"; FLAG="--latest"; else TAG="test"; FLAG="--prerelease"; fi
+          APK="assistant-$TAG-$RUN.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$APK"
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" "$APK" --target "$SHA" $FLAG \
+            --title "Assistant — version $TAG n°$RUN" \
+            --notes "Version 0.1.$RUN compilée depuis la branche $BRANCH. Sur le téléphone : télécharger le fichier .apk ci-dessous, l'ouvrir, installer."

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Pas de logo de démarrage sur l'écran de saisie : un fond uni s'affiche à la place,
+         pour que l'ouverture paraisse immédiate. -->
+    <style name="Theme.Assistant.Capture" parent="Theme.Assistant">
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="android:windowSplashScreenBackground">@color/background</item>
+    </style>
+</resources>
