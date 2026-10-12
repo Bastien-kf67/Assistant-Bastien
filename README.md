@@ -44,9 +44,9 @@ Paramètres → Batterie → Limites d'utilisation en arrière-plan → Applis j
 - Branche `dev` pour le travail, `main` pour les versions stables.
 - La compilation se fait sur GitHub (`.github/workflows/build.yml`) : tests, puis APK signé,
   publié dans les Releases (`test` pour dev, `stable` pour main).
-- La clé de signature n'est jamais dans le dépôt. Elle est fournie par quatre secrets GitHub :
-  `ASSISTANT_KEYSTORE_BASE64`, `ASSISTANT_KEYSTORE_PASSWORD`, `ASSISTANT_KEY_ALIAS`,
-  `ASSISTANT_KEY_PASSWORD`. Sans elle, chaque version aurait une signature différente et
-  Android refuserait la mise à jour.
+- La clé de signature n'est jamais dans le dépôt. Elle est fournie par deux secrets GitHub :
+  `ASSISTANT_KEYSTORE_BASE64` et `ASSISTANT_KEYSTORE_PASSWORD` (alias fixe `assistant`).
+  Sans elle, aucun APK n'est publié : une autre signature obligerait à désinstaller l'appli,
+  donc à perdre les captures.
 - Le schéma de la base est exporté à chaque compilation (artefact `schema-base`) : à verser
   dans `app/schemas/` avant toute évolution du modèle de données.

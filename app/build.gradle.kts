@@ -26,10 +26,12 @@ android {
     signingConfigs {
         create("release") {
             if (releaseKeystorePath != null) {
+                // Un seul mot de passe pour le fichier et la clé, alias fixe : deux secrets suffisent.
+                val password = System.getenv("ASSISTANT_KEYSTORE_PASSWORD")
                 storeFile = file(releaseKeystorePath)
-                storePassword = System.getenv("ASSISTANT_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("ASSISTANT_KEY_ALIAS")
-                keyPassword = System.getenv("ASSISTANT_KEY_PASSWORD")
+                storePassword = password
+                keyAlias = "assistant"
+                keyPassword = password
             }
         }
     }
