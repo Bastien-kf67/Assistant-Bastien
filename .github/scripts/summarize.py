@@ -34,6 +34,9 @@ def compile_errors(log_path: str) -> None:
         return
     keep = []
     for i, line in enumerate(lines):
+        # Redémarrage du compilateur Kotlin : message interne sans conséquence.
+        if "daemon" in line.lower():
+            continue
         if line.startswith("e: ") or "error:" in line or line.startswith("* What went wrong"):
             keep.extend(lines[i : i + 4] if line.startswith("* What went wrong") else [line])
     if keep:
