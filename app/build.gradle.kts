@@ -98,6 +98,8 @@ dependencies {
 
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.appauth)
+    // Thème des écrans de connexion d'AppAuth (voir Theme.Assistant.AuthRedirect).
+    implementation(libs.androidx.appcompat)
     implementation(libs.okhttp)
 
     testImplementation(libs.junit)

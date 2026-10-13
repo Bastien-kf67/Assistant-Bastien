@@ -59,6 +59,14 @@
             </intent-filter>
         </activity-alias>
 
+        <!-- Retour de la connexion Microsoft (déclaré par AppAuth) : il lui faut un thème AppCompat,
+             sinon l'appli plante au moment où Microsoft renvoie vers elle. -->
+        <activity
+            android:name="net.openid.appauth.RedirectUriReceiverActivity"
+            android:theme="@style/Theme.Assistant.AuthRedirect"
+            tools:node="merge"
+            tools:replace="android:theme" />
+
         <!-- Tuile « Noter » des réglages rapides. -->
         <service
             android:name=".widget.CaptureTileService"
