@@ -19,15 +19,8 @@
         android:theme="@style/Theme.Assistant"
         tools:targetApi="35">
 
-        <activity
-            android:name=".ui.main.MainActivity"
-            android:exported="true"
-            android:windowSoftInputMode="adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+        <!-- L'ordre des écrans compte : Android exige l'écran cible avant ses alias, et la touche
+             latérale Samsung ouvre le PREMIER écran « lanceur » de l'appli (« Parler », ci-dessous). -->
 
         <!-- Écran de saisie ouvert par le widget : tâche à part, absent des applis récentes,
              pas recréé quand on plie ou déplie le téléphone. Il peut s'afficher par-dessus
@@ -42,10 +35,28 @@
             android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
             android:theme="@style/Theme.Assistant.Capture" />
 
-        <!-- Porte d'entrée « par défaut » de l'appli (catégorie INFO, sans icône en plus) :
-             c'est elle qu'Android ouvre quand un réglage lance « Assistant » sans préciser d'écran,
-             comme le double appui sur la touche latérale Samsung. Ouvre directement la saisie.
-             L'icône Assistant, elle, ouvre toujours l'historique. -->
+        <!-- « Parler » : premier écran lanceur de l'appli, donc celui qu'ouvre le double appui sur la
+             touche latérale Samsung (réglé sur « Assistant »). Ouvre directement la dictée, sans empreinte.
+             Peut aussi devenir l'« assistant numérique » du téléphone (appui long sur la touche latérale). -->
+        <activity-alias
+            android:name=".Parler"
+            android:exported="true"
+            android:icon="@mipmap/ic_parler_launcher"
+            android:label="@string/parler_name"
+            android:roundIcon="@mipmap/ic_parler_launcher"
+            android:targetActivity=".ui.quickcapture.QuickCaptureActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Porte d'entrée « par défaut » quand un réglage lance l'appli sans préciser d'écran
+             (catégorie INFO, sans icône) : ouvre la saisie au clavier. -->
         <activity-alias
             android:name=".Noter"
             android:exported="true"
@@ -58,6 +69,17 @@
                 <category android:name="android.intent.category.INFO" />
             </intent-filter>
         </activity-alias>
+
+        <!-- Icône « Assistant » : l'historique, protégé par l'empreinte. -->
+        <activity
+            android:name=".ui.main.MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
         <!-- Retour de la connexion Microsoft (déclaré par AppAuth) : il lui faut un thème AppCompat,
              sinon l'appli plante au moment où Microsoft renvoie vers elle. -->

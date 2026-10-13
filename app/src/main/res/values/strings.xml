@@ -4,4 +4,5 @@
     <string name="widget_name">Assistant</string>
     <string name="widget_description">Écrire ou dicter une chose à ne pas oublier</string>
     <string name="note_name">Noter</string>
+    <string name="parler_name">Parler</string>
 </resources>

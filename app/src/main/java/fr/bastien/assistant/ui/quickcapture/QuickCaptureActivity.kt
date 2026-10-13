@@ -79,9 +79,17 @@ class QuickCaptureActivity : ComponentActivity() {
     companion object {
         private const val EXTRA_MODE = "fr.bastien.assistant.extra.MODE"
 
-        private fun modeOf(intent: Intent?): CaptureMode =
-            intent?.getStringExtra(EXTRA_MODE)?.let { runCatching { CaptureMode.valueOf(it) }.getOrNull() }
+        /**
+         * Dictée si on arrive par le raccourci « Parler » (touche latérale, icône) ou comme assistant
+         * numérique du téléphone ; sinon le mode demandé par le widget ; clavier par défaut.
+         */
+        internal fun modeOf(intent: Intent?): CaptureMode {
+            if (intent == null) return CaptureMode.TEXT
+            if (intent.action == Intent.ACTION_ASSIST) return CaptureMode.VOICE
+            if (intent.component?.className?.endsWith(".Parler") == true) return CaptureMode.VOICE
+            return intent.getStringExtra(EXTRA_MODE)?.let { runCatching { CaptureMode.valueOf(it) }.getOrNull() }
                 ?: CaptureMode.TEXT
+        }
 
         /** Chaque appui repart d'un écran neuf ; le brouillon éventuel est restauré. */
         fun intent(context: Context, mode: CaptureMode): Intent =

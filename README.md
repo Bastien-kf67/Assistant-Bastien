@@ -18,9 +18,13 @@ Le cahier des charges complet (V2) est tenu à part ; les règles de développem
 
 ## Noter sans passer par le widget
 
-- **Touche latérale** : Paramètres → Fonctions avancées → Touche latérale → Appuyer deux fois →
-  Ouvrir l'application → **Assistant**. Lancée ainsi, l'appli ouvre directement l'écran de saisie
-  (porte d'entrée par défaut, catégorie INFO) ; l'icône Assistant ouvre l'historique.
+- **Touche latérale, double appui** : Paramètres → Fonctions avancées → Touche latérale →
+  Appuyer deux fois → Ouvrir l'application → **Assistant** (à re-sélectionner après une mise à jour
+  qui change les écrans). Samsung ouvre le premier écran lanceur de l'appli : « Parler », qui lance
+  directement la dictée, sans empreinte. L'icône Assistant ouvre l'historique.
+- **Touche latérale, appui long (secours)** : Paramètres → Applications → Choisir les applis par
+  défaut → Application d'assistant numérique → **Assistant** ; puis Touche latérale → Appuyer de
+  façon prolongée → Assistant numérique. Remplace Gemini/Google Assistant pour ce geste.
 - **Tuile des réglages rapides** : dérouler les réglages rapides → crayon (modifier) → faire glisser
   la tuile **Noter** dans la liste.
 - **Écran verrouillé** : l'écran de saisie s'affiche par-dessus l'écran verrouillé quand c'est
