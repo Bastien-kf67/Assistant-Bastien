@@ -6,10 +6,10 @@ package fr.bastien.assistant.integration.microsoft
  */
 object TodoConfig {
     /** « ID d'application (client) » de l'inscription « Assistant Bastien ». */
-    const val CLIENT_ID = ""
+    const val CLIENT_ID = "46fe33a3-3709-4baf-89a1-b92e95affbe2"
 
     /** « ID de l'annuaire (locataire) » du Microsoft 365 de La Paysagerie. */
-    const val TENANT_ID = ""
+    const val TENANT_ID = "6c0594f8-37e9-4d39-9ec0-63dd27737437"
 
     /** Doit correspondre à l'URI déclarée dans l'inscription et à appAuthRedirectScheme (build.gradle). */
     const val REDIRECT_URI = "fr.bastien.assistant://auth"

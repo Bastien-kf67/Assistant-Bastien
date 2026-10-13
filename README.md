@@ -12,9 +12,9 @@ Le cahier des charges complet (V2) est tenu à part ; les règles de développem
 - **Jalon 1b — compléments.** Toucher une tâche pour la renommer ou la supprimer, corbeille de
   30 jours, recherche, verrouillage de l'historique par empreinte, raccourci « Noter » (touche
   latérale, tuile des réglages rapides, écran verrouillé).
-- **Jalon 2, en avance — Microsoft To Do.** Code prêt et testé, synchro dans les deux sens avec
-  la liste « Assistant (test) ». Inactif tant que l'inscription Microsoft n'est pas faite
-  (`TodoConfig.CLIENT_ID` et `TENANT_ID` vides).
+- **Jalon 2, en avance — Microsoft To Do.** Synchro dans les deux sens avec la liste
+  « Assistant (test) ». Appli inscrite dans Entra ID (« Assistant Bastien », client public,
+  redirection `fr.bastien.assistant://auth`, autorisation déléguée Tasks.ReadWrite).
 
 ## Noter sans passer par le widget
 
