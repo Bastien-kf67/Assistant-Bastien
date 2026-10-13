@@ -76,7 +76,12 @@ class MainActivity : FragmentActivity() {
                         onPinWidget = { WidgetPinning.requestPin(this) },
                     )
                 } else {
-                    LockedScreen(onUnlock = ::askToUnlock, onWrite = ::openCapture)
+                    LockedScreen(
+                        onUnlock = ::askToUnlock,
+                        onWrite = ::openCapture,
+                        crashReport = viewModel.crashReport,
+                        onClearCrash = viewModel::clearCrashReport,
+                    )
                 }
             }
         }
@@ -132,13 +137,23 @@ class MainActivity : FragmentActivity() {
 }
 
 @Composable
-private fun LockedScreen(onUnlock: () -> Unit, onWrite: () -> Unit) {
+private fun LockedScreen(
+    onUnlock: () -> Unit,
+    onWrite: () -> Unit,
+    crashReport: String?,
+    onClearCrash: () -> Unit,
+) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            // Le rapport ne contient aucune capture : il peut s'afficher avant le déverrouillage.
+            crashReport?.let {
+                CrashBanner(report = it, onClear = onClearCrash)
+                Spacer(Modifier.height(24.dp))
+            }
             Text("Assistant verrouillé", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(16.dp))
             Button(onClick = onUnlock) { Text("Déverrouiller") }

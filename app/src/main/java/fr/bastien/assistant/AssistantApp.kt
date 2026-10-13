@@ -51,6 +51,11 @@ class AssistantApp : Application(), Configuration.Provider {
     }
     val taskService by lazy { TaskService(database, onChanged = { syncScheduler.requestSync() }) }
 
+    override fun onCreate() {
+        super.onCreate()
+        CrashReporter.install(this)
+    }
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().build()
 }

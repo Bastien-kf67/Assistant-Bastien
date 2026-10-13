@@ -114,6 +114,13 @@ fun HistoryScreen(
                         IconButton(onClick = { mode = Mode.SEARCH }) { Icon(Icons.Default.Search, contentDescription = "Rechercher") }
                         IconButton(onClick = { mode = Mode.TRASH }) { Icon(Icons.Default.Delete, contentDescription = "Corbeille") }
                     }
+                    viewModel.crashReport?.let { report ->
+                        CrashBanner(
+                            report = report,
+                            onClear = viewModel::clearCrashReport,
+                            modifier = Modifier.padding(end = 12.dp, top = 4.dp, bottom = 4.dp),
+                        )
+                    }
                     Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Button(onClick = onWrite) { Text("✍  Écrire") }

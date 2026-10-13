@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import fr.bastien.assistant.AssistantApp
+import fr.bastien.assistant.CrashReporter
 import fr.bastien.assistant.data.local.TaskEntity
 import fr.bastien.assistant.domain.model.SyncStatus
 import fr.bastien.assistant.integration.microsoft.ConnectResult
@@ -45,6 +46,15 @@ class HistoryViewModel(private val app: AssistantApp) : ViewModel() {
         private set
     var connectMessage by mutableStateOf<String?>(null)
         private set
+
+    /** Rapport du dernier plantage, à transmettre (phase de test). */
+    var crashReport by mutableStateOf(CrashReporter.read(app))
+        private set
+
+    fun clearCrashReport() {
+        CrashReporter.clear(app)
+        crashReport = null
+    }
 
     /** Historique déverrouillé (empreinte) : gardé ici pour ne pas redemander en pliant/dépliant. */
     var unlocked by mutableStateOf(false)
