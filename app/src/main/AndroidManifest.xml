@@ -19,8 +19,7 @@
         android:theme="@style/Theme.Assistant"
         tools:targetApi="35">
 
-        <!-- L'ordre des écrans compte : Android exige l'écran cible avant ses alias, et la touche
-             latérale Samsung ouvre le PREMIER écran « lanceur » de l'appli (« Parler », ci-dessous). -->
+        <!-- Android exige l'écran cible avant ses alias : QuickCaptureActivity reste en tête. -->
 
         <!-- Écran de saisie ouvert par le widget : tâche à part, absent des applis récentes,
              pas recréé quand on plie ou déplie le téléphone. Il peut s'afficher par-dessus
@@ -35,9 +34,9 @@
             android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
             android:theme="@style/Theme.Assistant.Capture" />
 
-        <!-- « Parler » : premier écran lanceur de l'appli, donc celui qu'ouvre le double appui sur la
-             touche latérale Samsung (réglé sur « Assistant »). Ouvre directement la dictée, sans empreinte.
-             Peut aussi devenir l'« assistant numérique » du téléphone (appui long sur la touche latérale). -->
+        <!-- « Parler » : l'appli comme « assistant numérique » du téléphone. Appui long sur la touche
+             latérale (réglée sur « Assistant numérique ») → dictée directe, sans empreinte.
+             Sans icône : le double appui Samsung refuse ce raccourci (testé le 13/10/2026). -->
         <activity-alias
             android:name=".Parler"
             android:exported="true"
@@ -45,10 +44,6 @@
             android:label="@string/parler_name"
             android:roundIcon="@mipmap/ic_parler_launcher"
             android:targetActivity=".ui.quickcapture.QuickCaptureActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.ASSIST" />
                 <category android:name="android.intent.category.DEFAULT" />
