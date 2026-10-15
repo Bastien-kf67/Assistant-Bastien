@@ -6,10 +6,10 @@ interface TodoApi {
     suspend fun findOrCreateList(name: String): String
 
     /** Crée une tâche et renvoie son identifiant To Do. */
-    suspend fun createTask(listId: String, title: String, completed: Boolean): String
+    suspend fun createTask(listId: String, task: TaskPayload): String
 
-    /** Met à jour titre et état « fait ». */
-    suspend fun updateTask(listId: String, taskId: String, title: String, completed: Boolean)
+    /** Met à jour titre, état « fait », échéance et case. */
+    suspend fun updateTask(listId: String, taskId: String, task: TaskPayload)
 
     /** Supprime une tâche ; déjà absente = pas une erreur. */
     suspend fun deleteTask(listId: String, taskId: String)
@@ -17,6 +17,18 @@ interface TodoApi {
     /** Changements depuis [deltaLink] (tout le contenu de la liste si null). */
     suspend fun delta(listId: String, deltaLink: String?): DeltaResult
 }
+
+/** Ce qu'Assistant envoie à To Do pour une tâche. */
+data class TaskPayload(
+    val title: String,
+    val completed: Boolean,
+    /** aaaa-mm-jj, ou null : pas d'échéance. */
+    val dueDate: String? = null,
+    /** Case de rangement, affichée comme étiquette dans To Do. */
+    val categories: List<String> = emptyList(),
+    /** Texte d'origine, mis en note quand l'IA a reformulé. */
+    val note: String? = null,
+)
 
 data class RemoteTask(
     val id: String,

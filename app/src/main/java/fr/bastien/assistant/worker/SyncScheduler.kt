@@ -31,6 +31,15 @@ class SyncScheduler(private val context: Context, private val state: TodoSyncSta
         WorkManager.getInstance(context).enqueueUniqueWork(ONE_TIME, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
     }
 
+    /** Analyse par l'IA des nouvelles captures (puis envoi vers To Do, déclenché par l'analyse). */
+    fun requestInterpretation() {
+        val request = OneTimeWorkRequestBuilder<InterpretWorker>()
+            .setConstraints(network)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 20, TimeUnit.SECONDS)
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(INTERPRET, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
+    }
+
     fun start() {
         val periodic = PeriodicWorkRequestBuilder<TodoSyncWorker>(15, TimeUnit.MINUTES)
             .setConstraints(network)
@@ -49,5 +58,6 @@ class SyncScheduler(private val context: Context, private val state: TodoSyncSta
     private companion object {
         const val ONE_TIME = "todo-sync"
         const val PERIODIC = "todo-sync-periodic"
+        const val INTERPRET = "ai-interpret"
     }
 }

@@ -11,6 +11,9 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import fr.bastien.assistant.AssistantApp
 import fr.bastien.assistant.CrashReporter
+import fr.bastien.assistant.integration.ai.AiModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import fr.bastien.assistant.data.local.TaskEntity
 import fr.bastien.assistant.domain.model.SyncStatus
 import fr.bastien.assistant.integration.microsoft.ConnectResult
@@ -37,6 +40,15 @@ class HistoryViewModel(private val app: AssistantApp) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
     val errorCount: StateFlow<Int> = dao.observeCount(SyncStatus.ERROR)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val aiEnabled: Boolean = app.aiConfig.enabled
+    val aiModel: StateFlow<AiModel> = app.aiConfig.model
+
+    fun setAiModel(model: AiModel) = app.aiConfig.setModel(model)
+
+    /** Texte d'origine de la capture d'une tâche (jamais modifié), pour le montrer à côté du titre. */
+    suspend fun originalText(task: TaskEntity): String? =
+        withContext(Dispatchers.IO) { dao.getCapture(task.captureId)?.originalText }
 
     /** Corbeille : ce qui a été supprimé ces 30 derniers jours. */
     val trash: StateFlow<List<TaskEntity>> = dao.observeTrash(System.currentTimeMillis() - TRASH_DAYS * DAY_MS)
@@ -112,10 +124,14 @@ class HistoryViewModel(private val app: AssistantApp) : ViewModel() {
 
     /** Synchro à la demande (et à chaque ouverture de l'appli) ; les envois en erreur sont retentés. */
     fun syncNow() {
-        if (!app.todoState.connected) return
         app.appScope.launch {
-            dao.retryErrors()
-            app.syncScheduler.requestSync()
+            // Captures restées en attente d'analyse (appli coupée, pas de réseau…) : on relance l'IA,
+            // qui déclenche ensuite l'envoi.
+            if (dao.countCapturesToInterpret() > 0) app.syncScheduler.requestInterpretation()
+            if (app.todoState.connected) {
+                dao.retryErrors()
+                app.syncScheduler.requestSync()
+            }
         }
     }
 

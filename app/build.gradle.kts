@@ -20,10 +20,15 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = buildNumber
-        versionName = "0.2.$buildNumber"
+        versionName = "0.3.$buildNumber"
 
         // Retour de la connexion Microsoft : fr.bastien.assistant://auth (voir TodoConfig.REDIRECT_URI).
         manifestPlaceholders["appAuthRedirectScheme"] = "fr.bastien.assistant"
+
+        // Clé de l'IA : fournie par un secret GitHub à la compilation, jamais dans le dépôt.
+        // Sans elle, l'IA est désactivée et les captures partent telles quelles.
+        val anthropicKey = System.getenv("ANTHROPIC_API_KEY").orEmpty().trim()
+        buildConfigField("String", "ANTHROPIC_API_KEY", "\"$anthropicKey\"")
     }
 
     signingConfigs {
@@ -105,4 +110,5 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
+    testImplementation(libs.okhttp.mockwebserver)
 }

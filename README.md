@@ -12,6 +12,13 @@ Le cahier des charges complet (V2) est tenu à part ; les règles de développem
 - **Jalon 1b — compléments.** Toucher une tâche pour la renommer ou la supprimer, corbeille de
   30 jours, recherche, verrouillage de l'historique par empreinte, raccourci « Noter » (touche
   latérale, tuile des réglages rapides, écran verrouillé).
+- **Jalon 3 — IA.** Chaque capture est retravaillée par Claude (Haiku 5.5 par défaut, Sonnet 5.5 au
+  choix dans l'appli) : titre propre, découpage en plusieurs tâches, échéance si un jour est dit,
+  case (Pro, Immobilier, Perso, Admin, Projets), idées gardées dans Assistant, « à préciser » si flou.
+  La tâche brute est retenue (`HELD`) le temps de l'analyse ; en cas d'échec, elle part telle quelle.
+  Vers To Do : échéance, case en étiquette, texte d'origine en note. Clé : secret GitHub
+  `ANTHROPIC_API_KEY` (espace de travail « Assistant » de la console Claude, plafond de dépenses).
+  Consignes de l'IA : `integration/ai/InterpretationPrompt.kt` (personnes à compléter).
 - **Jalon 2, en avance — Microsoft To Do.** Synchro dans les deux sens avec la liste
   « Assistant (test) ». Appli inscrite dans Entra ID (« Assistant Bastien », client public,
   redirection `fr.bastien.assistant://auth`, autorisation déléguée Tasks.ReadWrite).

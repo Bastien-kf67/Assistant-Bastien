@@ -6,7 +6,14 @@ package fr.bastien.assistant.integration.microsoft
  */
 class FakeTodoApi : TodoApi {
 
-    data class FakeTask(val id: String, val title: String, val completed: Boolean)
+    data class FakeTask(
+        val id: String,
+        val title: String,
+        val completed: Boolean,
+        val dueDate: String? = null,
+        val categories: List<String> = emptyList(),
+        val note: String? = null,
+    )
 
     val lists = mutableMapOf<String, String>()
     val tasks = linkedMapOf<String, FakeTask>()
@@ -34,18 +41,26 @@ class FakeTodoApi : TodoApi {
         return id
     }
 
-    override suspend fun createTask(listId: String, title: String, completed: Boolean): String {
+    override suspend fun createTask(listId: String, task: TaskPayload): String {
         failNextCreate?.let { failNextCreate = null; throw it }
         if (listId !in lists) throw TodoApiException(404, "list not found")
         createCalls++
-        return addRemote(title, completed)
+        val id = addRemote(task.title, task.completed)
+        tasks[id] = tasks.getValue(id).copy(dueDate = task.dueDate, categories = task.categories, note = task.note)
+        return id
     }
 
-    override suspend fun updateTask(listId: String, taskId: String, title: String, completed: Boolean) {
+    override suspend fun updateTask(listId: String, taskId: String, task: TaskPayload) {
         failNextUpdate?.let { failNextUpdate = null; throw it }
-        val task = tasks[taskId] ?: throw TodoApiException(404, "task not found")
+        val existing = tasks[taskId] ?: throw TodoApiException(404, "task not found")
         updateCalls++
-        tasks[taskId] = task.copy(title = title, completed = completed)
+        // Comme GraphTodoApi : la note n'est jamais réécrite en mise à jour.
+        tasks[taskId] = existing.copy(
+            title = task.title,
+            completed = task.completed,
+            dueDate = task.dueDate,
+            categories = task.categories,
+        )
         changes += remote(tasks.getValue(taskId))
     }
 

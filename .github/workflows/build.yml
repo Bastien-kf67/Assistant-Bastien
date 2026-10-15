@@ -44,10 +44,24 @@ jobs:
             echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Vérifier la clé de l'IA
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Ne jamais afficher la clé : seulement sa présence et son format.
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning title=IA::Clé ANTHROPIC_API_KEY absente : IA désactivée dans cette version."
+          elif [[ "$ANTHROPIC_API_KEY" == sk-ant-* ]]; then
+            echo "::notice title=IA::Clé présente (format attendu)."
+          else
+            echo "::warning title=IA::Clé présente mais format inattendu (doit commencer par sk-ant-)."
+          fi
+
       - name: Tests et compilation
         shell: bash
         env:
           ASSISTANT_KEYSTORE_PASSWORD: ${{ secrets.ASSISTANT_KEYSTORE_PASSWORD }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           set -o pipefail
           gradle --no-daemon --continue testReleaseUnitTest assembleRelease \

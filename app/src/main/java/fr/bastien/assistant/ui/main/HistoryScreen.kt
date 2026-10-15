@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -61,8 +64,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.bastien.assistant.BuildConfig
+import fr.bastien.assistant.capture.CaptureService
 import fr.bastien.assistant.data.local.TaskEntity
+import fr.bastien.assistant.domain.model.Category
 import fr.bastien.assistant.domain.model.SyncStatus
+import fr.bastien.assistant.domain.model.TaskType
+import fr.bastien.assistant.integration.ai.AiModel
 import fr.bastien.assistant.integration.microsoft.TodoConfig
 import fr.bastien.assistant.integration.microsoft.TodoStatus
 import kotlinx.coroutines.launch
@@ -83,6 +90,7 @@ fun HistoryScreen(
     val todo by viewModel.todoStatus.collectAsStateWithLifecycle()
     val waiting by viewModel.waitingCount.collectAsStateWithLifecycle()
     val errors by viewModel.errorCount.collectAsStateWithLifecycle()
+    val aiModel by viewModel.aiModel.collectAsStateWithLifecycle()
     var showPinButton by remember { mutableStateOf(false) }
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     var mode by rememberSaveable { mutableStateOf(Mode.LIST) }
@@ -143,6 +151,7 @@ fun HistoryScreen(
                             onDisconnect = viewModel::disconnect,
                         )
                     }
+                    AiBar(enabled = viewModel.aiEnabled, model = aiModel, onModel = viewModel::setAiModel)
                 }
 
                 Mode.SEARCH -> SearchHeader(
@@ -201,6 +210,7 @@ fun HistoryScreen(
         EditTaskDialog(
             task = task,
             now = now,
+            loadOriginal = { viewModel.originalText(task) },
             onDismiss = { editing = null },
             onSave = { title ->
                 viewModel.rename(task, title)
@@ -287,11 +297,13 @@ private fun TrashList(trash: List<TaskEntity>, now: Long, onRestore: (TaskEntity
 private fun EditTaskDialog(
     task: TaskEntity,
     now: Long,
+    loadOriginal: suspend () -> String?,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
     onDelete: () -> Unit,
 ) {
     var text by remember(task.id) { mutableStateOf(TextFieldValue(task.title, TextRange(task.title.length))) }
+    val original by produceState<String?>(null, task.id) { value = runCatching { loadOriginal() }.getOrNull() }
     val focus = remember { FocusRequester() }
     LaunchedEffect(task.id) {
         withFrameNanos { }
@@ -314,12 +326,27 @@ private fun EditTaskDialog(
                     ),
                     keyboardActions = KeyboardActions(onDone = { if (text.text.isNotBlank()) onSave(text.text) }),
                 )
+                if (task.needsClarification) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "À préciser" + (task.clarificationQuestion?.let { " : $it" } ?: ""),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 Text(
                     "Noté ${TimeLabel.format(task.createdAt, now).replaceFirstChar { it.lowercase() }}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                original?.trim()?.takeIf { it.isNotEmpty() && CaptureService.titleFrom(it) != task.title }?.let {
+                    Text(
+                        "Texte d'origine : « $it »",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         },
         confirmButton = {
@@ -417,14 +444,17 @@ private fun TaskRow(
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
             )
-            val syncLabel = when {
-                !showSync -> null
-                task.syncStatus == SyncStatus.WAITING -> " · à envoyer"
-                task.syncStatus == SyncStatus.ERROR -> " · erreur d'envoi"
-                else -> null
+            val details = buildList {
+                add(TimeLabel.format(task.createdAt, now))
+                if (task.syncStatus == SyncStatus.HELD) add("analyse…")
+                if (task.type == TaskType.IDEA) add("idée")
+                if (task.category != Category.UNKNOWN) add(task.category.label)
+                task.dueDate?.let { add("pour ${TimeLabel.due(it, now)}") }
+                if (showSync && task.syncStatus == SyncStatus.WAITING) add("à envoyer")
+                if (showSync && task.syncStatus == SyncStatus.ERROR) add("erreur d'envoi")
             }
             Text(
-                TimeLabel.format(task.createdAt, now) + syncLabel.orEmpty(),
+                details.joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (task.syncStatus == SyncStatus.ERROR && showSync) {
                     MaterialTheme.colorScheme.error
@@ -432,8 +462,41 @@ private fun TaskRow(
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
             )
+            if (task.needsClarification && !task.done) {
+                Text(
+                    "À préciser" + (task.clarificationQuestion?.let { " : $it" } ?: ""),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+            }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AiBar(enabled: Boolean, model: AiModel, onModel: (AiModel) -> Unit) {
+    Spacer(Modifier.height(4.dp))
+    if (!enabled) {
+        Text(
+            "IA désactivée (clé absente) : les captures partent telles quelles",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("IA", style = MaterialTheme.typography.labelLarge)
+        AiModel.entries.forEach { option ->
+            Spacer(Modifier.width(8.dp))
+            FilterChip(
+                selected = option == model,
+                onClick = { onModel(option) },
+                label = { Text(option.label) },
+            )
+        }
+    }
+    Text(model.hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @Composable

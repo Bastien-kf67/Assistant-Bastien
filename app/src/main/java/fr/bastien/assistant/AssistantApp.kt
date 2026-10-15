@@ -7,6 +7,9 @@ import fr.bastien.assistant.capture.CaptureSource
 import fr.bastien.assistant.data.DraftStore
 import fr.bastien.assistant.data.TaskService
 import fr.bastien.assistant.data.local.AssistantDatabase
+import fr.bastien.assistant.domain.interpreter.InterpretationEngine
+import fr.bastien.assistant.integration.ai.AiConfig
+import fr.bastien.assistant.integration.ai.ClaudeInterpreter
 import fr.bastien.assistant.integration.microsoft.MicrosoftAuth
 import fr.bastien.assistant.integration.microsoft.SecureStore
 import fr.bastien.assistant.integration.microsoft.TodoSyncState
@@ -43,11 +46,28 @@ class AssistantApp : Application(), Configuration.Provider {
     /** Une seule synchro To Do à la fois, quel que soit ce qui l'a déclenchée. */
     val syncLock = Mutex()
 
+    /** Une seule analyse IA à la fois. */
+    val interpretLock = Mutex()
+
+    val aiConfig by lazy { AiConfig(this) }
+    val interpretationEngine by lazy {
+        InterpretationEngine(
+            database,
+            ClaudeInterpreter(httpClient, aiConfig.apiKey, model = { aiConfig.model.value.apiId }),
+        )
+    }
+
     val captureService by lazy {
-        CaptureService(database, onSaved = { source ->
-            // Les tâches importées de To Do y sont déjà : inutile de relancer un envoi.
-            if (source != CaptureSource.TODO_IMPORT) syncScheduler.requestSync()
-        })
+        CaptureService(
+            database,
+            onSaved = { source ->
+                // Les tâches importées de To Do y sont déjà : rien à analyser ni à renvoyer.
+                if (source != CaptureSource.TODO_IMPORT) {
+                    if (aiConfig.enabled) syncScheduler.requestInterpretation() else syncScheduler.requestSync()
+                }
+            },
+            holdForInterpretation = { source -> aiConfig.enabled && source != CaptureSource.TODO_IMPORT },
+        )
     }
     val taskService by lazy { TaskService(database, onChanged = { syncScheduler.requestSync() }) }
 

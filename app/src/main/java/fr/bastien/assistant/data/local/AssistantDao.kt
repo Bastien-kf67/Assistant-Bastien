@@ -3,7 +3,10 @@ package fr.bastien.assistant.data.local
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import fr.bastien.assistant.domain.model.CaptureStatus
+import fr.bastien.assistant.domain.model.Category
 import fr.bastien.assistant.domain.model.SyncStatus
+import fr.bastien.assistant.domain.model.TaskType
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -41,7 +44,7 @@ interface AssistantDao {
     @Query(
         """
         UPDATE tasks SET done = :done, doneAt = :doneAt, updatedAt = :now,
-            syncStatus = CASE WHEN syncStatus = 'LOCAL_ONLY' THEN 'LOCAL_ONLY' ELSE 'WAITING' END
+            syncStatus = CASE WHEN syncStatus IN ('LOCAL_ONLY', 'HELD') THEN syncStatus ELSE 'WAITING' END
         WHERE id = :taskId
         """,
     )
@@ -54,7 +57,7 @@ interface AssistantDao {
     @Query(
         """
         UPDATE tasks SET title = :title, updatedAt = :now,
-            syncStatus = CASE WHEN syncStatus = 'LOCAL_ONLY' THEN 'LOCAL_ONLY' ELSE 'WAITING' END
+            syncStatus = CASE WHEN syncStatus IN ('LOCAL_ONLY', 'HELD') THEN syncStatus ELSE 'WAITING' END
         WHERE id = :taskId AND deletedAt IS NULL
         """,
     )
@@ -74,7 +77,7 @@ interface AssistantDao {
     @Query(
         """
         UPDATE tasks SET deletedAt = NULL, updatedAt = :now,
-            syncStatus = CASE WHEN syncStatus = 'LOCAL_ONLY' THEN 'LOCAL_ONLY' ELSE 'WAITING' END
+            syncStatus = CASE WHEN syncStatus IN ('LOCAL_ONLY', 'HELD') THEN syncStatus ELSE 'WAITING' END
         WHERE id = :taskId AND deletedAt IS NOT NULL
         """,
     )
@@ -83,6 +86,48 @@ interface AssistantDao {
     /** Corbeille : tâches supprimées depuis [since], les plus récentes en haut. */
     @Query("SELECT * FROM tasks WHERE deletedAt IS NOT NULL AND deletedAt >= :since ORDER BY deletedAt DESC")
     fun observeTrash(since: Long): Flow<List<TaskEntity>>
+
+    // --- Interprétation par l'IA ---
+
+    /** Captures pas encore passées par l'IA. Les tâches importées de To Do n'y passent pas. */
+    @Query("SELECT * FROM captures WHERE status = 'CAPTURED' AND source != 'TODO_IMPORT' ORDER BY createdAt ASC LIMIT :limit")
+    suspend fun capturesToInterpret(limit: Int): List<CaptureEntity>
+
+    @Query("UPDATE captures SET status = :status, errorMessage = :error, updatedAt = :now WHERE id = :captureId")
+    suspend fun setCaptureStatus(captureId: String, status: CaptureStatus, error: String?, now: Long)
+
+    /** Applique le résultat de l'IA, seulement si l'utilisateur n'a pas touché la tâche entre-temps. */
+    @Query(
+        """
+        UPDATE tasks SET title = :title, type = :type, category = :category, dueDate = :dueDate,
+            confidence = :confidence, needsClarification = :needsClarification,
+            clarificationQuestion = :question, syncStatus = :syncStatus, updatedAt = :now
+        WHERE id = :taskId AND updatedAt = :expectedUpdatedAt AND syncStatus = 'HELD'
+        """,
+    )
+    suspend fun applyInterpretation(
+        taskId: String,
+        title: String,
+        type: TaskType,
+        category: Category,
+        dueDate: String?,
+        confidence: Double,
+        needsClarification: Boolean,
+        question: String?,
+        syncStatus: SyncStatus,
+        now: Long,
+        expectedUpdatedAt: Long,
+    ): Int
+
+    /** Libère telle quelle une tâche retenue (IA en échec ou tâche modifiée par l'utilisateur). */
+    @Query("UPDATE tasks SET syncStatus = 'WAITING' WHERE captureId = :captureId AND syncStatus = 'HELD'")
+    suspend fun releaseHeld(captureId: String): Int
+
+    @Query("UPDATE tasks SET syncStatus = 'WAITING' WHERE syncStatus = 'HELD'")
+    suspend fun releaseAllHeld(): Int
+
+    @Query("SELECT COUNT(*) FROM captures WHERE status = 'CAPTURED' AND source != 'TODO_IMPORT'")
+    suspend fun countCapturesToInterpret(): Int
 
     // --- Synchronisation avec un outil externe (Microsoft To Do) ---
 

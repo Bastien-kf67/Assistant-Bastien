@@ -40,6 +40,12 @@ Ordre des priorités : aucune capture perdue, rapidité, simplicité, fiabilité
   Rien n'est effacé de la base : les suppressions vont dans la corbeille (`deletedAt`).
 - Jetons Microsoft chiffrés par le Keystore Android (`SecureStore`), jamais en clair ni dans un log.
 - L'écran de saisie peut s'afficher sur l'écran verrouillé : il ne doit jamais montrer les captures existantes.
+- IA (`domain/interpreter`, `integration/ai`) : la capture et sa tâche brute sont enregistrées d'abord ;
+  la tâche est retenue (`HELD`) jusqu'à l'analyse. Échec définitif ou trop de pannes : la tâche brute part
+  telle quelle. Une tâche touchée par l'utilisateur avant l'analyse n'est pas réécrite.
+  L'IA ne doit jamais inventer de date, personne ou action ; une date douteuse est ignorée.
+- La clé de l'IA vient du secret GitHub `ANTHROPIC_API_KEY` ; ne jamais l'afficher, la journaliser
+  ni la mettre dans un message d'erreur.
 
 ## Compilation
 
@@ -56,4 +62,6 @@ corriger. Un jalon n'est terminé que quand l'exécution est verte et l'APK publ
 - `ui/main/` : historique, recherche, corbeille, verrouillage.
 - `widget/` : widget Glance et tuile « Noter » des réglages rapides.
 - `integration/microsoft/` : connexion Microsoft, Microsoft Graph, moteur de synchro To Do.
-- `worker/` : déclenchement de la synchro en arrière-plan.
+- `domain/interpreter/` : interface `TaskInterpreter` et moteur d'interprétation.
+- `integration/ai/` : appel à Claude, consignes de l'IA, choix du modèle.
+- `worker/` : analyse IA et synchro en arrière-plan.

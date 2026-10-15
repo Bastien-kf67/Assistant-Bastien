@@ -30,8 +30,10 @@ class CaptureService(
     private val db: AssistantDatabase,
     private val clock: () -> Long = System::currentTimeMillis,
     private val newId: () -> String = { UUID.randomUUID().toString() },
-    /** Appelé après chaque nouvelle capture enregistrée (ex. : demander un envoi vers To Do). */
+    /** Appelé après chaque nouvelle capture enregistrée (ex. : demander l'analyse puis l'envoi). */
     private val onSaved: (CaptureSource) -> Unit = {},
+    /** Vrai si la tâche doit attendre l'IA avant de partir vers To Do. */
+    private val holdForInterpretation: (CaptureSource) -> Boolean = { false },
 ) {
     private val dao = db.dao()
 
@@ -79,7 +81,8 @@ class CaptureService(
                 status = CaptureStatus.CAPTURED,
             ),
         )
-        // Jalon 1 : sans IA, une capture donne une seule tâche dont le titre est le texte saisi.
+        // Tâche brute, visible tout de suite dans l'historique. Avec l'IA, elle est retenue (HELD) le temps
+        // d'être retravaillée ; sans IA, elle part telle quelle vers To Do une fois connecté.
         dao.insertTask(
             TaskEntity(
                 id = newId(),
@@ -88,8 +91,11 @@ class CaptureService(
                 title = titleFrom(rawText),
                 createdAt = now,
                 updatedAt = now,
-                // « À envoyer dès que possible » : partira vers To Do une fois connecté.
-                syncStatus = SyncStatus.WAITING,
+                syncStatus = if (runCatching { holdForInterpretation(source) }.getOrDefault(false)) {
+                    SyncStatus.HELD
+                } else {
+                    SyncStatus.WAITING
+                },
             ),
         )
         dao.insertLog(

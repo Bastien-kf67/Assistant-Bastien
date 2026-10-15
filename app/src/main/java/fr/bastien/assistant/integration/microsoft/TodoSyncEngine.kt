@@ -7,6 +7,7 @@ import fr.bastien.assistant.capture.CaptureSource
 import fr.bastien.assistant.data.local.ActionLogEntity
 import fr.bastien.assistant.data.local.AssistantDatabase
 import fr.bastien.assistant.data.local.TaskEntity
+import fr.bastien.assistant.domain.model.Category
 import fr.bastien.assistant.domain.model.SyncStatus
 
 /** Où en est la synchro : la liste utilisée et le point de reprise des changements To Do. */
@@ -167,8 +168,16 @@ class TodoSyncEngine(
         }
     }
 
+    /** Ce qui part vers To Do : titre, état, échéance, case, et le texte d'origine s'il a été reformulé. */
+    private suspend fun payloadFor(task: TaskEntity): TaskPayload {
+        val original = dao.getCapture(task.captureId)?.originalText?.trim()
+        val note = original?.takeIf { CaptureService.titleFrom(it) != task.title }?.let { "Noté : « $it »" }
+        val categories = if (task.category == Category.UNKNOWN) emptyList() else listOf(task.category.label)
+        return TaskPayload(task.title, task.done, task.dueDate, categories, note)
+    }
+
     private suspend fun send(listId: String, task: TaskEntity, report: SyncReport) {
-        val externalId = api.createTask(listId, task.title, task.done)
+        val externalId = api.createTask(listId, payloadFor(task))
         db.withTransaction {
             dao.setExternal(task.id, TodoConfig.PROVIDER, externalId)
             dao.setSyncStatusIfUnchanged(task.id, SyncStatus.SYNCED, task.updatedAt)
@@ -178,7 +187,7 @@ class TodoSyncEngine(
     }
 
     private suspend fun update(listId: String, task: TaskEntity, report: SyncReport) {
-        api.updateTask(listId, requireNotNull(task.externalId), task.title, task.done)
+        api.updateTask(listId, requireNotNull(task.externalId), payloadFor(task))
         db.withTransaction {
             dao.setSyncStatusIfUnchanged(task.id, SyncStatus.SYNCED, task.updatedAt)
             log(task.captureId, "TODO_UPDATED", "fait=${task.done} titre=\"${task.title}\"")

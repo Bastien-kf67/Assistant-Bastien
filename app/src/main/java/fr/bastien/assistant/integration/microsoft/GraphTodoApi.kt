@@ -8,6 +8,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
@@ -42,14 +43,30 @@ class GraphTodoApi(
             .getString("id")
     }
 
-    override suspend fun createTask(listId: String, title: String, completed: Boolean): String {
-        val body = JSONObject().put("title", title).put("status", status(completed))
+    override suspend fun createTask(listId: String, task: TaskPayload): String {
+        val body = taskJson(task, clearMissing = false)
         return call("POST", url("me", "todo", "lists", listId, "tasks").toString(), body).getString("id")
     }
 
-    override suspend fun updateTask(listId: String, taskId: String, title: String, completed: Boolean) {
-        val body = JSONObject().put("title", title).put("status", status(completed))
+    override suspend fun updateTask(listId: String, taskId: String, task: TaskPayload) {
+        // La note n'est posée qu'à la création : Bastien a pu y écrire depuis dans To Do.
+        val body = taskJson(task.copy(note = null), clearMissing = true)
         call("PATCH", url("me", "todo", "lists", listId, "tasks", taskId).toString(), body)
+    }
+
+    /** [clearMissing] : en mise à jour, une échéance retirée dans Assistant est retirée dans To Do. */
+    private fun taskJson(task: TaskPayload, clearMissing: Boolean): JSONObject {
+        val body = JSONObject().put("title", task.title).put("status", status(task.completed))
+        when {
+            task.dueDate != null -> body.put(
+                "dueDateTime",
+                JSONObject().put("dateTime", "${task.dueDate}T00:00:00").put("timeZone", TIME_ZONE),
+            )
+            clearMissing -> body.put("dueDateTime", JSONObject.NULL)
+        }
+        if (task.categories.isNotEmpty() || clearMissing) body.put("categories", JSONArray(task.categories))
+        task.note?.let { body.put("body", JSONObject().put("content", it).put("contentType", "text")) }
+        return body
     }
 
     override suspend fun deleteTask(listId: String, taskId: String) {
@@ -93,6 +110,10 @@ class GraphTodoApi(
     )
 
     private fun status(completed: Boolean) = if (completed) "completed" else "notStarted"
+
+    private companion object {
+        const val TIME_ZONE = "Europe/Paris"
+    }
 
     private suspend fun call(method: String, url: String, body: JSONObject? = null): JSONObject =
         withContext(Dispatchers.IO) {
