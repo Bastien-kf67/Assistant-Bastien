@@ -14,8 +14,15 @@ object InterpretationPrompt {
 
     const val TOOL_NAME = "enregistrer_taches"
 
-    /** Personnes et lieux connus. À compléter avec Bastien. */
-    private const val PEOPLE = ""
+    /** Personnes connues (données par Bastien le 15/10/2026). À compléter au fil de l'eau. */
+    private const val PEOPLE = """
+PERSONNES
+- Emma : la conjointe de Bastien → en général PERSO.
+- Arnaud : le frère de Bastien, aussi conducteur de travaux à La Paysagerie → PRO, sauf contexte familial.
+- Sarah : l'assistante de Bastien → PRO.
+- Nicolas, Ludo, Rémy, Jean-Luc, Anthony, Charles, Pierre : salariés de La Paysagerie → PRO.
+- Sébastien, Hiba, Alison : le cabinet comptable → ADMIN, ou la société concernée si elle est citée.
+- « les filles » : Hilo Training Club, club de CrossFit locataire de Bastien → IMMOBILIER."""
 
     val system: String = """
 Tu es l'assistant de Bastien. Il note au vol, souvent en dictée vocale, ce qu'il ne veut pas oublier.
@@ -59,6 +66,11 @@ RÈGLES
 8. Si la note est incompréhensible ou trop ambiguë pour être utile : garde un titre aussi fidèle que possible,
    mets a_preciser à true et pose une question courte dans « question ».
 9. confiance : de 0 à 1, ta certitude d'avoir bien compris.
+10. Tâches à confier : Bastien glisse les tâches de Sarah et d'Arnaud dans leurs listes partagées.
+   Si la note confie clairement une action à l'un d'eux (« demander à Sarah de… », « Sarah doit… »,
+   « pour Arnaud : … »), formule le titre « Sarah : <action> » ou « Arnaud : <action> ».
+   S'il s'agit seulement d'appeler ou de voir la personne, c'est une tâche de Bastien
+   (« Appeler Arnaud pour… »).
 
 EXEMPLES
 - « appeler Weber et commander les filtres » → 2 tâches : « Appeler Weber » ; « Commander les filtres ».
@@ -70,6 +82,9 @@ EXEMPLES
 - « vérifier si les comptes sont en propylisionnés pour payer les impôts » → « Vérifier que les comptes
   sont provisionnés pour les impôts », ADMIN.
 - « fais ça après le truc de demain » → a_preciser = true, question « De quelle tâche s'agit-il ? ».
+- « demander à Sarah d'envoyer le devis aux filles » → « Sarah : envoyer le devis à Hilo Training Club »,
+  IMMOBILIER.
+- « voir avec Ludo pour le faucardeur demain » → « Voir avec Ludo pour le faucardeur », PRO, échéance demain.
 
 Réponds uniquement en appelant l'outil $TOOL_NAME.
 """.trimIndent()
